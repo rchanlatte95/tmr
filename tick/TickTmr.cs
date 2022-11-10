@@ -13,31 +13,30 @@ public struct state // 4 bytes in size.
 
 // Timer structure for keeping track of time.
 [StructLayout(LayoutKind.Sequential)]
-public struct timer // 12 bytes
+public struct tick_timer // 12 bytes
 {
-    public float dur;
-    public float remaining;
+    public int dur;
+    public int remaining;
     public state state;
 }
 
-public static class Tmr
+public static class TickTmr
 {
     public const byte FALSE = 0;
     public const byte TRUE = 1;
-    public const float FLT_EPSILON = 0.001f;
 
     public static int reservedTmrs = 0;
     public static int currActiveTmrs = 0;
 
     public const int MAX_TIMER_CT = 16;
-    public static timer[] pool = new timer[MAX_TIMER_CT];
-    
+    public static tick_timer[] pool = new tick_timer[MAX_TIMER_CT];
+
     public static Action[] doneCallbacks = new Action[MAX_TIMER_CT];
 
     // Stop the Timers from executing 
     public static void FlushPool(bool stopExe = false)
     {
-        if(stopExe == false)
+        if (stopExe == false)
         {
             for (int i = 0; i < MAX_TIMER_CT; ++i)
             {
@@ -100,7 +99,7 @@ public static class Tmr
 
     // Reserves AND Initializes a timer. 
     // Returns the Index of the timer reserved for you.
-    public static int ResInit(float duration, Action endCallback)
+    public static int ResInit(int tickDur, Action endCallback)
     {
         if (reservedTmrs < MAX_TIMER_CT)
         {
@@ -110,7 +109,7 @@ public static class Tmr
                 else
                 {
                     pool[i].state.RESERVED = TRUE;
-                    pool[i].dur = duration;
+                    pool[i].dur = tickDur;
                     doneCallbacks[i] = endCallback;
                     ++reservedTmrs;
                     return i;
@@ -122,17 +121,17 @@ public static class Tmr
     }
 
     // Initializes a reserved timer.
-    public static void Init(int id, float duration, Action endCallback)
+    public static void Init(int id, int tickDur, Action endCallback)
     {
-        pool[id].dur = duration;
+        pool[id].dur = tickDur;
         doneCallbacks[id] = endCallback;
     }
 
     // Start execution of timer given some arbitrary duration and completion function.
-    public static void Start(int id, float duration, Action endCallback)
+    public static void Start(int id, int tickDur, Action endCallback)
     {
-        pool[id].dur = duration;
-        pool[id].remaining = duration;
+        pool[id].dur = tickDur;
+        pool[id].remaining = tickDur;
         doneCallbacks[id] = endCallback;
 
         if (pool[id].state.RUNNING == FALSE)
@@ -143,10 +142,10 @@ public static class Tmr
     }
 
     // Start execution of timer given some arbitrary duration.
-    public static void Start(int id, float duration)
+    public static void Start(int id, int tickDur)
     {
-        pool[id].dur = duration;
-        pool[id].remaining = duration;
+        pool[id].dur = tickDur;
+        pool[id].remaining = tickDur;
 
         if (pool[id].state.RUNNING == FALSE)
         {
@@ -180,7 +179,7 @@ public static class Tmr
     }
 
     // Increment/Tick all timers.
-    public static void Tick(float dt)
+    public static void Tick(int tickDelta)
     {
         int tmrs2Update = currActiveTmrs;
         for (int i = 0; tmrs2Update > 0; ++i)
@@ -189,9 +188,9 @@ public static class Tmr
             else
             {
                 --tmrs2Update;
-                pool[i].remaining -= dt;
+                pool[i].remaining -= tickDelta;
 
-                if (pool[i].remaining > FLT_EPSILON) { continue; }
+                if (pool[i].remaining > 0) { continue; }
                 else
                 {
                     pool[i].state.RUNNING = FALSE;
@@ -202,3 +201,4 @@ public static class Tmr
         }
     }
 }
+
